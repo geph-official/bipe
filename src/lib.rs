@@ -13,21 +13,21 @@ use std::{
 };
 
 /// Create a "bipe". Use async_dup's methods if you want something cloneable/shareable
-pub fn bipe(capacity: usize) -> (PipeWriter, PipeReader) {
+pub fn bipe(capacity: usize) -> (BipeWriter, BipeReader) {
     let buffer = rtrb::RingBuffer::new(capacity);
     let (send_buf, recv_buf) = buffer.split();
     let write_ready = Arc::new(event_listener::Event::new());
     let read_ready = Arc::new(event_listener::Event::new());
     let closed = Arc::new(AtomicBool::new(false));
     (
-        PipeWriter {
+        BipeWriter {
             queue: send_buf,
             signal: write_ready.clone(),
             signal_reader: read_ready.clone(),
             listener: write_ready.listen(),
             closed: closed.clone(),
         },
-        PipeReader {
+        BipeReader {
             queue: recv_buf,
             signal: read_ready.clone(),
             signal_writer: write_ready.clone(),
@@ -38,7 +38,7 @@ pub fn bipe(capacity: usize) -> (PipeWriter, PipeReader) {
 }
 
 /// Writing end of a byte pipe.
-pub struct PipeWriter {
+pub struct BipeWriter {
     queue: Producer<u8>,
     signal: Arc<event_listener::Event>,
     signal_reader: Arc<event_listener::Event>,
@@ -46,7 +46,7 @@ pub struct PipeWriter {
     closed: Arc<AtomicBool>,
 }
 
-impl Drop for PipeWriter {
+impl Drop for BipeWriter {
     fn drop(&mut self) {
         self.closed.store(true, Ordering::SeqCst);
         self.signal_reader.notify(1);
@@ -57,7 +57,7 @@ fn broken_pipe() -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::ConnectionReset, "broken pipe")
 }
 
-impl AsyncWrite for PipeWriter {
+impl AsyncWrite for BipeWriter {
     fn poll_write(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -89,14 +89,14 @@ impl AsyncWrite for PipeWriter {
     }
 
     fn poll_close(self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<std::io::Result<()>> {
-        self.closed.store(true, Ordering::Relaxed);
+        self.closed.store(true, Ordering::SeqCst);
         self.signal_reader.notify(1);
         Poll::Ready(Ok(()))
     }
 }
 
 /// Read end of a byte pipe.
-pub struct PipeReader {
+pub struct BipeReader {
     queue: Consumer<u8>,
     signal: Arc<event_listener::Event>,
     signal_writer: Arc<event_listener::Event>,
@@ -104,7 +104,7 @@ pub struct PipeReader {
     closed: Arc<AtomicBool>,
 }
 
-impl AsyncRead for PipeReader {
+impl AsyncRead for BipeReader {
     fn poll_read(
         mut self: Pin<&mut Self>,
         cx: &mut Context<'_>,
@@ -118,12 +118,36 @@ impl AsyncRead for PipeReader {
                 }
             }
             if self.closed.load(Ordering::Relaxed) {
-                return Poll::Ready(Err(broken_pipe()));
+                return Poll::Ready(Ok(0));
             }
             let listen_new_data = &mut self.listener;
             futures_lite::pin!(listen_new_data);
             futures_lite::ready!(listen_new_data.poll(cx));
             self.listener = self.signal.listen();
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_no_corruption() {
+        const ITERATIONS: u64 = 1000;
+        let (mut send, mut recv) = bipe(9);
+        async_global_executor::block_on(async move {
+            async_global_executor::spawn(async move {
+                for iteration in 0u64..ITERATIONS {
+                    // dbg!(iteration);
+                    send.write_all(&iteration.to_be_bytes()).await.unwrap();
+                }
+            })
+            .detach();
+            let mut buff = vec![];
+            recv.read_to_end(&mut buff).await.unwrap();
+            dbg!(buff.len());
+            assert_eq!(buff.len() as u64, ITERATIONS * 8);
+        })
     }
 }

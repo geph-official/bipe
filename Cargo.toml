@@ -2,6 +2,9 @@
 name = "bipe"
 version = "0.1.0"
 edition = "2018"
+description="asynchronous"
+license="ISC"
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -10,3 +13,6 @@ event-listener = "2.5.1"
 futures-core = "0.3.16"
 futures-lite = "1.12.0"
 rtrb = "0.1.4"
+
+[dev-dependencies]
+async-global-executor="1"
