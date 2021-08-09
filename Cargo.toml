@@ -2,8 +2,9 @@
 name = "bipe"
 version = "0.1.0"
 edition = "2018"
-description="asynchronous"
+description="asynchronous I/O pipe"
 license="ISC"
+repository="https://github.com/geph-official/bipe"
 
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
