@@ -1,5 +1,5 @@
 use futures_lite::prelude::*;
-use rtrb::{Consumer, Producer};
+use queue::{new_queue, ByteConsumer, ByteProducer};
 use std::{
     io::Read,
     io::Write,
@@ -11,11 +11,11 @@ use std::{
     task::Context,
     task::Poll,
 };
+mod queue;
 
 /// Create a "bipe". Use async_dup's methods if you want something cloneable/shareable
 pub fn bipe(capacity: usize) -> (BipeWriter, BipeReader) {
-    let buffer = rtrb::RingBuffer::new(capacity);
-    let (send_buf, recv_buf) = buffer.split();
+    let (send_buf, recv_buf) = new_queue(capacity);
     let write_ready = Arc::new(event_listener::Event::new());
     let read_ready = Arc::new(event_listener::Event::new());
     let closed = Arc::new(AtomicBool::new(false));
@@ -39,7 +39,7 @@ pub fn bipe(capacity: usize) -> (BipeWriter, BipeReader) {
 
 /// Writing end of a byte pipe.
 pub struct BipeWriter {
-    queue: Producer<u8>,
+    queue: ByteProducer,
     signal: Arc<event_listener::Event>,
     signal_reader: Arc<event_listener::Event>,
     listener: event_listener::EventListener,
@@ -97,7 +97,7 @@ impl AsyncWrite for BipeWriter {
 
 /// Read end of a byte pipe.
 pub struct BipeReader {
-    queue: Consumer<u8>,
+    queue: ByteConsumer,
     signal: Arc<event_listener::Event>,
     signal_writer: Arc<event_listener::Event>,
     listener: event_listener::EventListener,
