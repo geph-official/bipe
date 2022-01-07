@@ -36,9 +36,11 @@ pub struct ByteConsumer {
 
 impl std::io::Write for ByteProducer {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        self.inner
-            .push(buf.to_vec())
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::WouldBlock, e))?;
+        if !buf.is_empty() {
+            self.inner
+                .push(buf.to_vec())
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::WouldBlock, e))?;
+        }
         Ok(buf.len())
     }
 
