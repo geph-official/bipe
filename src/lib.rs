@@ -1,3 +1,4 @@
+mod buffer;
 use futures_lite::prelude::*;
 
 use std::{
@@ -145,7 +146,7 @@ mod tests {
             .detach();
             let mut buff = vec![];
             recv.read_to_end(&mut buff).await.unwrap();
-            dbg!(buff.len());
+
             assert_eq!(buff.len() as u64, ITERATIONS * 8);
         })
     }
