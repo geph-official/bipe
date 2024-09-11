@@ -46,7 +46,7 @@ impl Write for Producer {
         let len = buf.len().min(inner.limit - inner.buf.len());
         inner.buf.write_all(&buf[..len]).unwrap();
         assert!(inner.buf.len() <= inner.limit);
-        Ok(buf.len())
+        Ok(len)
     }
 
     fn flush(&mut self) -> std::io::Result<()> {

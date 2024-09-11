@@ -135,7 +135,7 @@ mod tests {
     #[test]
     fn test_no_corruption() {
         const ITERATIONS: u64 = 1000;
-        let (mut send, mut recv) = bipe(9000);
+        let (mut send, mut recv) = bipe(9);
         async_global_executor::block_on(async move {
             async_global_executor::spawn(async move {
                 for iteration in 0u64..ITERATIONS {
