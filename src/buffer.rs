@@ -10,6 +10,20 @@ struct Inner {
     closed: bool,
 }
 
+pub fn new(limit: usize) -> (Producer, Consumer) {
+    let inner = Arc::new(Mutex::new(Inner {
+        buf: VecDeque::new(),
+        limit,
+        closed: false,
+    }));
+    (
+        Producer {
+            inner: inner.clone(),
+        },
+        Consumer { inner },
+    )
+}
+
 pub struct Producer {
     inner: Arc<Mutex<Inner>>,
 }
