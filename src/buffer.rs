@@ -61,9 +61,6 @@ pub struct Consumer {
 impl Read for Consumer {
     fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
         let mut inner = self.inner.lock().unwrap();
-        if inner.buf.capacity() > inner.limit * 2 {
-            inner.buf.shrink_to_fit();
-        }
         if !inner.closed && inner.buf.is_empty() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::WouldBlock,
